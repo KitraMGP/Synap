@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use crate::error::FfiError;
-use crate::types::NoteDTO;
+use crate::types::{BuildInfo, NoteDTO};
 use synap_core::dto::NoteDTO as CoreNoteDTO;
 use synap_core::service::SynapService as CoreSynapService;
 
@@ -102,7 +102,9 @@ impl SynapService {
     }
 
     pub fn search_tags(&self, query: String, limit: u32) -> Result<Vec<String>, FfiError> {
-        self.inner.search_tags(&query, limit as usize).map_err(Into::into)
+        self.inner
+            .search_tags(&query, limit as usize)
+            .map_err(Into::into)
     }
 
     pub fn create_note(&self, content: String, tags: Vec<String>) -> Result<NoteDTO, FfiError> {
@@ -155,6 +157,14 @@ pub fn open(path: String) -> Result<Arc<SynapService>, FfiError> {
 pub fn open_memory() -> Result<Arc<SynapService>, FfiError> {
     let service = CoreSynapService::new(None)?;
     Ok(Arc::new(SynapService::new(service)))
+}
+
+pub fn get_build_info() -> BuildInfo {
+    synap_core::build_info().into()
+}
+
+pub fn get_version_string() -> String {
+    synap_core::version_string()
 }
 
 #[cfg(test)]
@@ -260,5 +270,18 @@ mod tests {
 
         let restored = service.get_note(second.id).unwrap();
         assert_eq!(restored.content, "Second");
+    }
+
+    #[test]
+    fn test_version_info_is_exposed() {
+        let info = get_build_info();
+        assert!(!info.crate_version.is_empty());
+        assert!(!info.git_branch.is_empty());
+        assert!(!info.git_commit.is_empty());
+        assert!(!info.git_short_commit.is_empty());
+        assert!(!info.display_version.is_empty());
+
+        let version = get_version_string();
+        assert_eq!(version, info.display_version);
     }
 }

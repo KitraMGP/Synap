@@ -8,8 +8,8 @@ mod service;
 mod types;
 
 pub use error::FfiError;
-pub use service::{open, open_memory, SynapService};
-pub use types::NoteDTO;
+pub use service::{get_build_info, get_version_string, open, open_memory, SynapService};
+pub use types::{BuildInfo, NoteDTO};
 
 // Include uniffi bindings - this will generate the Kotlin bindings
 uniffi::include_scaffolding!("synap");

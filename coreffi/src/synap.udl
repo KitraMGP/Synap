@@ -1,6 +1,8 @@
 namespace synap_coreffi {
     [Throws=FfiError] SynapService open(string path);
     [Throws=FfiError] SynapService open_memory();
+    BuildInfo get_build_info();
+    string get_version_string();
 };
 
 enum FfiError {
@@ -16,6 +18,15 @@ dictionary NoteDTO {
     string content;
     sequence<string> tags;
     i64 created_at;
+};
+
+dictionary BuildInfo {
+    string crate_version;
+    string git_branch;
+    string git_commit;
+    string git_short_commit;
+    string? git_tag;
+    string display_version;
 };
 
 interface SynapService {
