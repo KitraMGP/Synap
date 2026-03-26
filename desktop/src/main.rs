@@ -1,3 +1,7 @@
+//! Synap Desktop Application
+//!
+//! A knowledge graph application for capturing and connecting ideas.
+
 fn main() {
-    println!("Hello, world!");
+    let _ = synap_desktop::app::main();
 }
