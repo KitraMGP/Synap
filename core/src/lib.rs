@@ -1,14 +1,13 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+mod db;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+// Public API modules
+pub mod models;
+pub mod service;
+pub mod sync;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub mod dto;
+pub mod error;
+pub mod search;
+pub mod views;
+/// Version information
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
