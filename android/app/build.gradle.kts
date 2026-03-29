@@ -100,26 +100,29 @@ fun resolveRustupHome(): File? {
 }
 
 fun resolveExecutable(name: String): File? {
+    val execName = if (isWindows) "$name.exe" else name
     val pathCandidates = System.getenv("PATH")
         .orEmpty()
         .split(File.pathSeparatorChar)
         .filter(String::isNotBlank)
-        .map { File(it, name) }
+        .map { File(it, execName) }
 
     val cargoHome = resolveCargoHome()
     val homeDir = System.getProperty("user.home")?.let(::File)
+    val userProfile = System.getenv("USERPROFILE")?.let(::File)
+
     val extraCandidates = listOfNotNull(
-        cargoHome?.resolve("bin/$name"),
-        homeDir?.resolve(".cargo/bin/$name"),
-        File("/opt/cargo/bin/$name"),
-        File("/usr/local/bin/$name"),
-        File("/usr/bin/$name"),
+        cargoHome?.resolve("bin/$execName"),
+        homeDir?.resolve(".cargo/bin/$execName"),
+        userProfile?.resolve(".cargo/bin/$execName"), // 修复了 Windows 环境变量解析
+        File("/opt/cargo/bin/$execName"),
+        File("/usr/local/bin/$execName"),
+        File("/usr/bin/$execName")
     )
 
     return (pathCandidates + extraCandidates)
         .firstOrNull { it.isFile() && it.canExecute() }
 }
-
 fun withPrependedPath(vararg dirs: File): String =
     (dirs.map { it.absolutePath } + System.getenv("PATH").orEmpty())
         .filter(String::isNotBlank)
@@ -178,13 +181,15 @@ fun resolveRustupChannel(toolchain: String): String =
         .substringBefore('-')
         .ifBlank { "stable" }
 
-fun resolveToolchainBinary(rustupHome: File?, toolchain: String, binary: String): File? =
-    rustupHome
+fun resolveToolchainBinary(rustupHome: File?, toolchain: String, binary: String): File? {
+    val execName = if (isWindows) "$binary.exe" else binary
+    return rustupHome
         ?.resolve("toolchains")
         ?.resolve(toolchain)
         ?.resolve("bin")
-        ?.resolve(binary)
+        ?.resolve(execName)
         ?.takeIf { it.isFile() && it.canExecute() }
+}
 
 fun shellQuote(value: String): String = "'${value.replace("'", "'\"'\"'")}'"
 
@@ -267,7 +272,7 @@ android {
         }
     }
 }
-
+val isWindows = System.getProperty("os.name").lowercase().contains("windows")
 val rustup = resolveExecutable("rustup")
 val cargoHome = resolveCargoHome()
 val rustupHome = resolveRustupHome()
@@ -288,10 +293,19 @@ val cargoProfile = if (gradle.startParameter.taskNames.any { it.contains("releas
 } else {
     "debug"
 }
-val rustWrapperDir = layout.buildDirectory.dir("generated/rust-wrapper").get().asFile
-val cargoWrapper = rustWrapperDir.resolve("cargo")
-val rustcWrapper = rustWrapperDir.resolve("rustc")
 
+
+
+// 动态决定 Wrapper 文件的后缀
+val cargoWrapperName = if (isWindows) "cargo.bat" else "cargo"
+val rustcWrapperName = if (isWindows) "rustc.bat" else "rustc"
+
+val rustWrapperDir = layout.buildDirectory.dir("generated/rust-wrapper").get().asFile
+// 确保这里使用的是上面定义的带有后缀的变量
+val cargoWrapper = rustWrapperDir.resolve(cargoWrapperName)
+val rustcWrapper = rustWrapperDir.resolve(rustcWrapperName)
+
+// 3. 动态生成 Wrapper 脚本
 fun writeRustWrapper(
     scriptFile: File,
     executable: File,
@@ -299,25 +313,47 @@ fun writeRustWrapper(
     extraPathDirs: List<File> = emptyList(),
 ) {
     val pathValue = withPrependedPath(*extraPathDirs.toTypedArray())
-    val lines = buildList {
-        add("#!/usr/bin/env sh")
-        add("set -eu")
-        add("export PATH=${shellQuote(pathValue)}")
-        if (cargoHome != null) {
-            add("export CARGO_HOME=${shellQuote(cargoHome.absolutePath)}")
+
+    val lines = if (isWindows) {
+        // 生成 Windows 的批处理文件
+        buildList {
+            add("@echo off")
+            add("set \"PATH=${pathValue}\"")
+            if (cargoHome != null) {
+                add("set \"CARGO_HOME=${cargoHome.absolutePath}\"")
+            }
+            if (rustupHome != null) {
+                add("set \"RUSTUP_HOME=${rustupHome.absolutePath}\"")
+            }
+            add("set \"RUSTUP_TOOLCHAIN=${cargoToolchain}\"")
+            if (exportedRustc != null) {
+                add("set \"RUSTC=${exportedRustc.absolutePath}\"")
+            }
+            add("\"${executable.absolutePath}\" %*")
         }
-        if (rustupHome != null) {
-            add("export RUSTUP_HOME=${shellQuote(rustupHome.absolutePath)}")
+    } else {
+        // 生成 Unix 的 Shell 脚本
+        buildList {
+            add("#!/usr/bin/env sh")
+            add("set -eu")
+            add("export PATH=${shellQuote(pathValue)}")
+            if (cargoHome != null) {
+                add("export CARGO_HOME=${shellQuote(cargoHome.absolutePath)}")
+            }
+            if (rustupHome != null) {
+                add("export RUSTUP_HOME=${shellQuote(rustupHome.absolutePath)}")
+            }
+            add("export RUSTUP_TOOLCHAIN=${shellQuote(cargoToolchain)}")
+            if (exportedRustc != null) {
+                add("export RUSTC=${shellQuote(exportedRustc.absolutePath)}")
+            }
+            add("exec ${shellQuote(executable.absolutePath)} \"$@\"")
         }
-        add("export RUSTUP_TOOLCHAIN=${shellQuote(cargoToolchain)}")
-        if (exportedRustc != null) {
-            add("export RUSTC=${shellQuote(exportedRustc.absolutePath)}")
-        }
-        add("exec ${shellQuote(executable.absolutePath)} \"$@\"")
     }
 
     scriptFile.parentFile.mkdirs()
-    scriptFile.writeText(lines.joinToString("\n", postfix = "\n"))
+    val separator = if (isWindows) "\r\n" else "\n"
+    scriptFile.writeText(lines.joinToString(separator, postfix = separator))
     scriptFile.setExecutable(true)
 }
 
@@ -336,7 +372,6 @@ if (rustcExecutable != null) {
         extraPathDirs = rustToolBinDirs,
     )
 }
-
 cargo {
     module = coreffiDir.absolutePath
     libname = "uniffi_synap_coreffi"
