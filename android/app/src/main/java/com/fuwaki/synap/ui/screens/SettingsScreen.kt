@@ -62,12 +62,14 @@ fun SettingsScreen(
     onSystemLanguageToggle: (Boolean) -> Unit,
     noteTextSize: Float,
     onNoteTextSizeChange: (Float) -> Unit,
+    buildVersion: String,
+    buildVersionDetails: String?,
     onExportNotes: () -> Unit,
-    onNavigateToLanguageSelection: () -> Unit,
-    onNavigateBack: () -> Unit,
     onExportDatabase: () -> Unit,
     onShareDatabase: () -> Unit,
     onImportDatabase: () -> Unit,
+    onNavigateToLanguageSelection: () -> Unit,
+    onNavigateBack: () -> Unit,
 ) {
     val context = LocalContext.current
 
@@ -283,8 +285,6 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "语言 (Language)",
-            Text(
                 text = "数据库",
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
@@ -389,6 +389,8 @@ fun SettingsScreen(
             }
             Spacer(modifier = Modifier.height(24.dp))
 
+            Text(
+                text = "语言 (Language)",
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(bottom = 12.dp, start = 8.dp),
@@ -460,6 +462,33 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 20.sp,
                     )
+                }
+
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "版本信息",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = buildVersion,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    buildVersionDetails?.takeIf { it.isNotBlank() }?.let { details ->
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = details,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
 
                 HorizontalDivider(

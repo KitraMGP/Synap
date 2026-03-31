@@ -63,14 +63,15 @@ import com.fuwaki.synap.ui.viewmodel.EditorEvent
 import com.fuwaki.synap.ui.viewmodel.EditorMode
 import com.fuwaki.synap.ui.viewmodel.EditorViewModel
 import com.fuwaki.synap.ui.viewmodel.HomeViewModel
+import com.fuwaki.synap.ui.viewmodel.SettingsViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.Dispatchers
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -82,16 +83,15 @@ val LocalNoteTextSize = compositionLocalOf { 16.sp }
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
     @Inject
     lateinit var synapService: SynapServiceApi
 
+    override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             SynapApp()
         }
     }
-}
 
     suspend fun exportDatabaseToUri(uri: Uri): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
@@ -136,12 +136,13 @@ class MainActivity : ComponentActivity() {
     fun closeForDatabaseRestart() {
         finishAffinity()
     }
+}
 
 @Composable
 private fun SynapApp() {
     val context = LocalContext.current
-    val prefs = remember { context.getSharedPreferences("synap_settings", Context.MODE_PRIVATE) }
     val activity = context as? MainActivity
+    val prefs = remember { context.getSharedPreferences("synap_settings", Context.MODE_PRIVATE) }
     val supportsMonet = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
     var themeMode by remember { mutableIntStateOf(prefs.getInt("themeMode", 0)) }
@@ -277,8 +278,8 @@ private fun SynapNavGraph(
     onLanguageSelect: (Int) -> Unit,
     noteTextSize: Float,
     onNoteTextSizeChange: (Float) -> Unit,
-) {
     databaseActivity: MainActivity?,
+) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
 
@@ -381,7 +382,8 @@ private fun SynapNavGraph(
         composable("settings") {
             val context = LocalContext.current
             val scope = rememberCoroutineScope()
-
+            val settingsViewModel: SettingsViewModel = hiltViewModel()
+            val settingsUiState by settingsViewModel.uiState.collectAsState()
             var showImportWarning by remember { mutableStateOf(false) }
             var showRestartRequired by remember { mutableStateOf(false) }
 
@@ -473,6 +475,7 @@ private fun SynapNavGraph(
                     },
                 )
             }
+
             SettingsScreen(
                 currentThemeMode = themeMode,
                 onThemeModeChange = onThemeModeChange,
@@ -485,6 +488,8 @@ private fun SynapNavGraph(
                 onSystemLanguageToggle = onSystemLanguageToggle,
                 noteTextSize = noteTextSize,
                 onNoteTextSizeChange = onNoteTextSizeChange,
+                buildVersion = settingsUiState.buildVersion,
+                buildVersionDetails = settingsUiState.buildVersionDetails,
                 onExportNotes = {
                     scope.launch(Dispatchers.IO) {
                         val testJsonData = "[\n  {\n    \"id\": \"1\",\n    \"content\": \"这是一条导出测试笔记。\"\n  }\n]"
@@ -493,11 +498,6 @@ private fun SynapNavGraph(
                         }
                     }
                 },
-                onNavigateToLanguageSelection = { navController.navigate("language_selection") },
-                onNavigateBack = { navController.popBackStack() },
-            )
-        }
-
                 onExportDatabase = {
                     exportDatabaseLauncher.launch("synap_database.redb")
                 },
@@ -524,6 +524,11 @@ private fun SynapNavGraph(
                         showImportWarning = true
                     }
                 },
+                onNavigateToLanguageSelection = { navController.navigate("language_selection") },
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+
         composable("language_selection") {
             LanguageSelectionScreen(
                 languages = languages,
