@@ -263,6 +263,8 @@ val generateCoreffiBindings by tasks.registering(Exec::class) {
     inputs.dir(repoRootDir.resolve("xtask/src"))
     outputs.dir(generatedCoreffiBindingsDir)
 
+    outputs.upToDateWhen { false }
+
     doFirst {
         val cargo = toolchainCargoExecutable
             ?: resolveExecutable("cargo")
