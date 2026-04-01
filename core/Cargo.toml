@@ -19,4 +19,8 @@ uuid = { version = "1.22.0", features = ["serde", "v7", "v5", "v4"] }
 
 [dev-dependencies]
 tempfile = "3.0"
-criterion = "0.5"
+divan = "0.1.21"
+
+[[bench]]
+name = "service_benchmark"
+harness = false
