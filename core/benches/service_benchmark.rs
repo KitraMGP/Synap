@@ -6,37 +6,6 @@ mod fixture;
 use fixture::BenchFixture;
 
 #[divan::bench(args = fixture::CONFIGS)]
-fn bench_get_note_by_uuid(bencher: Bencher, config: fixture::BenchConfig) {
-    let fixture = BenchFixture::new(config);
-    bencher.bench_local(|| {
-        let id = &fixture.note_ids[0];
-        fixture.service.get_note(id).unwrap()
-    });
-}
-
-#[divan::bench(args = fixture::CONFIGS)]
-fn bench_get_recent_note_first_page(bencher: Bencher, config: fixture::BenchConfig) {
-    let fixture = BenchFixture::new(config);
-    bencher.bench_local(|| fixture.service.get_recent_note(None, Some(20)).unwrap());
-}
-
-#[divan::bench(args = fixture::CONFIGS)]
-fn bench_get_recent_note_second_page(bencher: Bencher, config: fixture::BenchConfig) {
-    let fixture = BenchFixture::new(config);
-    bencher.bench_local(|| {
-        let first_page = fixture.service.get_recent_note(None, Some(20)).unwrap();
-        if first_page.len() >= 2 {
-            fixture
-                .service
-                .get_recent_note(Some(&first_page[1].id), Some(20))
-                .unwrap()
-        } else {
-            Vec::<NoteDTO>::new()
-        }
-    });
-}
-
-#[divan::bench(args = fixture::CONFIGS)]
 fn bench_get_replies(bencher: Bencher, config: fixture::BenchConfig) {
     let fixture = BenchFixture::new(config);
     bencher.bench_local(|| {
@@ -46,20 +15,11 @@ fn bench_get_replies(bencher: Bencher, config: fixture::BenchConfig) {
 }
 
 #[divan::bench(args = fixture::CONFIGS)]
-fn bench_get_origins_depth_3(bencher: Bencher, config: fixture::BenchConfig) {
+fn bench_get_origins(bencher: Bencher, config: fixture::BenchConfig) {
     let fixture = BenchFixture::new(config);
     bencher.bench_local(|| {
         let leaf_id = &fixture.deep_leaf_ids[0];
-        fixture.service.get_origins(leaf_id, 3).unwrap()
-    });
-}
-
-#[divan::bench(args = fixture::CONFIGS)]
-fn bench_get_origins_depth_10(bencher: Bencher, config: fixture::BenchConfig) {
-    let fixture = BenchFixture::new(config);
-    bencher.bench_local(|| {
-        let leaf_id = &fixture.deep_leaf_ids[0];
-        fixture.service.get_origins(leaf_id, 10).unwrap()
+        fixture.service.get_origins(leaf_id).unwrap()
     });
 }
 
